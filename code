@@ -1,0 +1,278 @@
+"""
+TP1 Ma223_GénieMathématique
+
+Emeric Lebreton - Jimmy Hoarau A2
+"""
+
+import numpy as np
+import time as t
+import matplotlib.pyplot as plt
+
+#1-Introduction
+
+"""Dans ce TP, on va écrire des fonctions simples permettant d’appliquer l’algorithme de Gauss pour résoudre des systèmes.
+Pour ce faire, on utilisera Python et en particulier la librairie numpy."""
+
+
+#2-L'algorithme de Gauss
+
+#Question 1
+
+def  ReductionGauss(Aaug) :
+    m,n = Aaug.shape                                 
+    if m != n-1:
+        print("On ne peux pas effectuer la fonction. La matrice doit être augmentée pour obtenir un résultat")
+        return
+    A = np.copy(Aaug)                                
+    for i in range(0,m-1):
+        l = A[i,i]                                   
+        if (l == 0):                                
+            print("La réduction de A n'existe pas")
+            return
+        else:
+            for j in range(i+1,m):
+                g = A[j,i]/l                         
+                A[j,:] -= g*A[i,:]                   
+    return(A)
+
+#Question 2
+
+def ResolutionSystTriSup (Taug):
+
+    m,n = Taug.shape                                 
+    if m != n-1:
+        print("On ne peux pas effectuer la fonction. La matrice doit être augmentée pour obtenir un résultat")
+        return
+    T = np.copy(Taug)
+    n,m = T.shape
+    x = np.zeros(n)
+ 
+    x[n-1] = T[n-1,n] / T[n-1,n-1]     
+    for i in range(n-2,-1,-1):
+        x[i] = (T[i,n] - np.sum(T[i,i+1:n]*x[i+1:n]))/T[i,i]
+                   
+    return x
+
+#Question 3
+
+def Gauss(A,B):
+    m1,n1 = A.shape
+    m2,n2 = B.shape
+    if m1 != n1:
+        print("La matrice A n'est pas carrée, le calcul n'est donc pas possible")
+        return
+    if n2 != 1 or m2 != m1:
+        print("La matrice B n'est pas aux bonnes dimensions, le calcul n'est pas possible")
+        return
+    Aaug = np.concatenate((A,B),axis=1)
+    Taug =  ReductionGauss(Aaug)
+    X = ResolutionSystTriSup(Taug)
+    return(X)
+
+#3-Décomposition LU
+
+#Question 1
+
+def DecompositionLU (A):
+    
+    n = np.shape(A)[0]
+    L = np.identity(n)
+    U = np.zeros(shape = (n,n))
+ 
+    for i in range(0,n-1):
+        for k in range(i+1,n):
+            L[k,i] = A[k,i]/A[i,i]
+            A[k] = A[k]-(L[k,i])*A[i]
+    U = np.copy(A)
+    return L,U
+
+#Question 2
+
+def ResolutionLU (L,U,B):
+    
+    n,m = L.shape
+    Y = np.zeros(n)
+    for i in range(n):
+        Y[i] = B[i] - sum(L[i,:i]*Y[:i])
+    X = np.zeros(n)
+    for i in range(n-1,-1,-1):
+        X[i] = (Y[i] - sum(U[i,i:n]*X[i:n]))/U[i,i]
+    return X
+
+#4-Variantes de l'algorithme de Gauss
+
+#Question 1
+
+def GaussChoixPivotPartiel(A,B):
+    A = np.column_stack ((A,B))
+    n,m = A.shape
+   
+    for k in range (n):
+       
+        for w in range(0,n-k):
+            l = abs(A[k+w,k])
+            if l > abs(A[k,k]):
+                T = A[k,:].copy()
+                A[k,:] = A[k+w,:]
+                A[k+w,:] = T
+            p = A[k,k]
+
+        if p != 0 :
+            for i in range (k,n-1):
+                G = A[i+1,k]/p
+                A[i+1,:] = A[i+1, :] - G*A[k,:]
+               
+    Taug = A.copy()
+    X = np.zeros(n)
+   
+    for k in range(n-1,-1,-1):
+        S = 0
+        for j in range (k+1,n):
+            S = S + Taug[k,j]*X[j]
+
+        X[k] = (Taug[k,m-1]-S)/Taug[k,k]
+
+    #print (A)
+    #print (X)
+
+    return X
+
+#Question 2
+       
+def GaussChoixPivotTotal(A,B):
+    n,m = np.shape(A)
+    B = B.reshape(n,1)
+    
+    X = np.zeros(n)
+    templ = [0,0]
+    tempc = [0,0]
+    jmax = 0
+    kmax = 0
+    for i in range(0, n-1):
+        jmax = i
+        kmax = i
+        pivotmax= abs(A[jmax,kmax])
+
+        if i >= 1:
+            for k in range(i,n-1):
+                for j in range(i,n-1):
+                    if abs(A[j,k]) > pivotmax : 
+                        jmax = j
+                        kmax = k
+                        pivotmax = abs(A[jmax,kmax])
+
+            tempc[:] = A[:,i]
+            A[:,i] = A[:,kmax]
+            A[:,kmax] = tempc[:]
+            templ[:] = A[i,:]
+            A[i,:] = A[jmax,:]
+            A[jmax,:] = templ[:]
+
+        for k in range(i+1,n):
+            g = A[k,i] / A[i,i]
+            A[k,:] = A[k,:]-g*A[i, :]
+    T = np.column_stack((A,B))
+    X[n-1] = T[n-1,n] / T[n-1,n-1]
+
+    for i in range(n-2, -1, -1):
+        X[i] = T[i,n]
+        for j in range(i+1, n):
+            X[i]= X[i] - T[i,j] * X[j]
+        X[i] =  X[i] / T[i,i]
+    #print (A)
+    #print (X)
+    return X
+
+
+
+
+
+
+#2-L'algorithme de Gauss
+
+#Question 4
+
+Taillematrice = []
+LU = []
+PP = []
+PT = []
+for i in range(10,150,10):
+    Taillematrice.append(i)
+
+len_Taillematrice = len(Taillematrice)
+Erreur_Gauss = []
+Erreur_LU = []
+Erreur_PP = []
+Erreur_PT = [] 
+
+Temps_Gauss = []
+Temps_LU = []
+Temps_PP = []
+Temps_PT = []
+ 
+for i in range(len_Taillematrice):
+    n = Taillematrice[i]
+    A = np.random.random(size=(n,n))
+    B = np.random.random(size=(n,1))
+    A1 = np.copy(A)
+    A2 = np.copy(A)
+    A3 = np.copy(A)
+    A4 = np.copy(A)
+    
+    start = t.process_time()
+    X = Gauss(A1,B)
+    stop = t.process_time()
+    #E = np.linalg.norm(A@X-np.ravel(B))
+    E = np.linalg.norm(np.dot(A1,X)-np.ravel(B))
+    Erreur_Gauss.append(E)
+    Temps_Gauss.append(stop - start)
+
+    start = t.process_time()
+    L,U = DecompositionLU(A2)
+    X2 = ResolutionLU(L,U,B)
+    LU = np.matmul(L,U)
+    stop = t.process_time()
+    #E2 = np.linalg.norm(A@X2-np.ravel(B))
+    E2 = np.linalg.norm(np.dot(LU,X2)-np.ravel(B))
+    Erreur_LU.append(E2)
+    Temps_LU.append(stop - start)
+
+    start = t.process_time()
+    X3 = GaussChoixPivotPartiel(A3,B)
+    stop = t.process_time()
+    E3 = np.linalg.norm(np.dot(A3,X3)-np.ravel(B))
+    Erreur_PP.append(E3)
+    Temps_PP.append(stop - start)
+ 
+    start = t.process_time()
+    X4 = GaussChoixPivotTotal(A4,B)
+    stop = t.process_time()
+    E4 = np.linalg.norm(np.dot(A4,X4)-np.ravel(B))
+    Erreur_PT.append(E4)
+    Temps_PT.append(stop - start)
+ 
+
+ 
+plt.plot(Taillematrice, Temps_Gauss, label = "Gauss")
+plt.plot(Taillematrice, Temps_LU, label ="LU")
+plt.plot(Taillematrice, Temps_PP, label ="PP")
+plt.plot(Taillematrice, Temps_PT, label ="PT")
+plt.title("Temps de calcul CPU en fonction de la taille de la matrice")
+plt.xlabel("Taille de la matrice")
+plt.ylabel("Temps de calcul en (s)")
+plt.legend()
+plt.show()
+ 
+plt.plot(Taillematrice, Erreur_Gauss, label = "Gauss")
+plt.plot(Taillematrice, Erreur_LU, label ="LU")
+plt.plot(Taillematrice, Erreur_PP, label ="PP")
+plt.plot(Taillematrice, Erreur_PT, label ="PT")
+plt.title("Erreurs de calcul en fonction de la taille de la matrice", fontsize = 10)
+plt.xlabel("Taille de la matrice")
+plt.ylabel("||AX - B||")
+plt.legend()
+plt.show()
+
+#Calcul d une norme de AX-B
+#nplinalg.norm(np.dot(A,x)-b.ravel)
+#Une matrice qu'on veut mettre en vecteur : on utilise .ravel
